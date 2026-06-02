@@ -14,7 +14,7 @@ return new class extends Migration {
             $table->unsignedBigInteger('id')->primary();
             $table->string('name');
             $table->string('email')->unique();
-            $table->string('image_path')->nullable()->after('email');
+            $table->string('image_path')->nullable();
             $table->timestamps();
         });
 
