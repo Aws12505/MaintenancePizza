@@ -19,6 +19,11 @@ use Illuminate\Support\Facades\Auth;
  */
 class CatalogService
 {
+    public function __construct(
+        private NoteService $notes,
+        private AttachmentService $attachments,
+    ) {}
+
     // ------------------------------------------------------------------ Issues
 
     public function listIssues(?string $trashed, int $perPage): LengthAwarePaginator
@@ -152,6 +157,8 @@ class CatalogService
             'id' => $issue->id,
             'title' => $issue->title,
             'description' => $issue->description,
+            'notes' => $this->notes->presentMany($issue),
+            'attachments' => $this->attachments->presentMany($issue),
             'created_by' => $issue->created_by,
             'creator' => $issue->relationLoaded('creator') && $issue->creator
                 ? $this->presentUser($issue->creator)
@@ -174,6 +181,8 @@ class CatalogService
             'category' => $technician->relationLoaded('category') && $technician->category
                 ? $this->presentCategory($technician->category)
                 : null,
+            'notes' => $this->notes->presentMany($technician),
+            'attachments' => $this->attachments->presentMany($technician),
             'created_by' => $technician->created_by,
             'created_at' => $technician->created_at,
             'updated_at' => $technician->updated_at,
@@ -190,6 +199,8 @@ class CatalogService
             'id' => $category->id,
             'name' => $category->name,
             'technicians_count' => $category->technicians_count ?? null,
+            'notes' => $this->notes->presentMany($category),
+            'attachments' => $this->attachments->presentMany($category),
             'created_by' => $category->created_by,
             'created_at' => $category->created_at,
             'updated_at' => $category->updated_at,
@@ -204,6 +215,8 @@ class CatalogService
         return [
             'id' => $part->id,
             'name' => $part->name,
+            'notes' => $this->notes->presentMany($part),
+            'attachments' => $this->attachments->presentMany($part),
             'created_by' => $part->created_by,
             'created_at' => $part->created_at,
             'updated_at' => $part->updated_at,

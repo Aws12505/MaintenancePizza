@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasNotesAndAttachments;
 use Database\Factories\AssignmentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Assignment extends Model
 {
     /** @use HasFactory<AssignmentFactory> */
-    use HasFactory;
+    use HasFactory, HasNotesAndAttachments;
 
     protected $fillable = ['assigned_date', 'assigned_hour'];
 

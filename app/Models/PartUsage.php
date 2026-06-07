@@ -2,17 +2,17 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasNotesAndAttachments;
 use Database\Factories\PartUsageFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class PartUsage extends Model
 {
     /** @use HasFactory<PartUsageFactory> */
-    use HasFactory;
+    use HasFactory, HasNotesAndAttachments;
 
     protected $fillable = ['part_id', 'cost', 'mistaken'];
 
@@ -37,11 +37,5 @@ class PartUsage extends Model
     public function ticketIssues(): BelongsToMany
     {
         return $this->belongsToMany(TicketIssue::class, 'part_ticket_issue')->withTimestamps();
-    }
-
-    /** @return MorphMany<Attachment, $this> */
-    public function attachments(): MorphMany
-    {
-        return $this->morphMany(Attachment::class, 'attachable');
     }
 }

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\IssueStatus;
 use App\Enums\Priority;
+use App\Models\Concerns\HasNotesAndAttachments;
 use Database\Factories\TicketIssueFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -14,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class TicketIssue extends Model
 {
     /** @use HasFactory<TicketIssueFactory> */
-    use HasFactory;
+    use HasFactory, HasNotesAndAttachments;
 
     protected $fillable = [
         'ticket_id',

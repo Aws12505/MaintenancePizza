@@ -17,6 +17,25 @@ use Illuminate\Support\Facades\DB;
 class AssignmentService
 {
     /**
+     * Eager loads for an assignment's own notes/files and its delays' notes/files.
+     *
+     * @var list<string>
+     */
+    private const RECORD_LOADS = [
+        'notes.attachments',
+        'notes.creator',
+        'attachments',
+        'delays.notes.attachments',
+        'delays.notes.creator',
+        'delays.attachments',
+    ];
+
+    public function __construct(
+        private NoteService $notes,
+        private AttachmentService $attachments,
+    ) {}
+
+    /**
      * @param  array<string, mixed>  $data  ticket_issue_ids, technician_ids, assigned_date, assigned_hour?
      * @return array<string, mixed>
      */
@@ -45,7 +64,7 @@ class AssignmentService
             return $assignment;
         });
 
-        return $this->present($assignment->load(['delays', 'ticketIssues']));
+        return $this->present($assignment->load(['delays', 'ticketIssues', ...self::RECORD_LOADS]));
     }
 
     /**
@@ -72,7 +91,7 @@ class AssignmentService
             ]);
         });
 
-        return $this->present($assignment->load('delays'));
+        return $this->present($assignment->load(['delays', ...self::RECORD_LOADS]));
     }
 
     /**
@@ -94,7 +113,7 @@ class AssignmentService
             }
         });
 
-        return $this->present($assignment->load(['delays', 'ticketIssues']));
+        return $this->present($assignment->load(['delays', 'ticketIssues', ...self::RECORD_LOADS]));
     }
 
     /**
@@ -112,6 +131,8 @@ class AssignmentService
             'ticket_issue_ids' => $assignment->relationLoaded('ticketIssues')
                 ? $assignment->ticketIssues->pluck('id')->all()
                 : null,
+            'notes' => $this->notes->presentMany($assignment),
+            'attachments' => $this->attachments->presentMany($assignment),
             'created_by' => $assignment->created_by,
             'created_at' => $assignment->created_at,
             'updated_at' => $assignment->updated_at,
@@ -131,6 +152,8 @@ class AssignmentService
             'new_date' => $delay->new_date?->toDateString(),
             'new_hour' => $delay->new_hour,
             'reason' => $delay->reason,
+            'notes' => $this->notes->presentMany($delay),
+            'attachments' => $this->attachments->presentMany($delay),
             'created_by' => $delay->created_by,
             'created_at' => $delay->created_at,
         ];

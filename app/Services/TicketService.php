@@ -24,11 +24,20 @@ class TicketService
     /**
      * @var list<string>
      */
-    private array $listWith = ['store', 'ticketIssues.issue', 'creator'];
+    private array $listWith = [
+        'store',
+        'ticketIssues.issue',
+        'creator',
+        'notes.attachments',
+        'notes.creator',
+        'attachments',
+    ];
 
     public function __construct(
         private TicketIssueService $issues,
         private CatalogService $catalog,
+        private NoteService $notes,
+        private AttachmentService $attachments,
     ) {}
 
     /**
@@ -94,12 +103,13 @@ class TicketService
     }
 
     /**
+     * Re-load a ticket with the standard relations and present it. Used after a
+     * side-effecting action (e.g. appending a final note) to return fresh data.
+     *
      * @return array<string, mixed>
      */
-    public function setFinalNote(Ticket $ticket, ?string $note): array
+    public function presentFresh(Ticket $ticket): array
     {
-        $ticket->update(['final_note' => $note]);
-
         return $this->present($ticket->load($this->listWith)->loadCount('ticketIssues'));
     }
 
@@ -125,7 +135,8 @@ class TicketService
                 ? $this->presentStore($ticket->store)
                 : null,
             'status' => ['value' => $status->value, 'label' => $status->label()],
-            'final_note' => $ticket->final_note,
+            'notes' => $this->notes->presentMany($ticket),
+            'attachments' => $this->attachments->presentMany($ticket),
             'issues' => $ticket->relationLoaded('ticketIssues')
                 ? $ticket->ticketIssues->map(fn (TicketIssue $i) => $this->issues->present($i))->all()
                 : null,
@@ -148,6 +159,8 @@ class TicketService
         return [
             'id' => $store->id,
             'store_number' => $store->store_number,
+            'notes' => $this->notes->presentMany($store),
+            'attachments' => $this->attachments->presentMany($store),
             'created_at' => $store->created_at,
             'updated_at' => $store->updated_at,
         ];
@@ -271,12 +284,24 @@ class TicketService
                 ->whereHas('ticketIssues', $hasStatus(IssueStatus::Assigned))
                 ->whereDoesntHave('ticketIssues', $hasStatus(IssueStatus::InProgress)),
 
+            // All issues finished (complete/deferred/cancelled) AND at least one
+            // is not a cancellation — an all-cancelled ticket is Cancelled, below.
             TicketStatus::Complete => $query
                 ->whereHas('ticketIssues')
                 ->whereDoesntHave('ticketIssues', fn (Builder $q) => $q->whereNotIn('status', [
                     IssueStatus::Complete->value,
                     IssueStatus::Deferred->value,
+                    IssueStatus::Cancelled->value,
+                ]))
+                ->whereHas('ticketIssues', fn (Builder $q) => $q->whereIn('status', [
+                    IssueStatus::Complete->value,
+                    IssueStatus::Deferred->value,
                 ])),
+
+            // Every issue cancelled.
+            TicketStatus::Cancelled => $query
+                ->whereHas('ticketIssues')
+                ->whereDoesntHave('ticketIssues', fn (Builder $q) => $q->where('status', '!=', IssueStatus::Cancelled->value)),
 
             TicketStatus::Pending => $query
                 ->whereDoesntHave('ticketIssues', $hasStatus(IssueStatus::InProgress))

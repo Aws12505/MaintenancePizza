@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasNotesAndAttachments;
 use Database\Factories\AssignmentDelayFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class AssignmentDelay extends Model
 {
     /** @use HasFactory<AssignmentDelayFactory> */
-    use HasFactory;
+    use HasFactory, HasNotesAndAttachments;
 
     protected $fillable = [
         'assignment_id',

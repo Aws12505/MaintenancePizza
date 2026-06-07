@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasNotesAndAttachments;
 use Database\Factories\TechnicianFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Technician extends Model
 {
     /** @use HasFactory<TechnicianFactory> */
-    use HasFactory, SoftDeletes;
+    use HasFactory, HasNotesAndAttachments, SoftDeletes;
 
     protected $fillable = ['name', 'category_id'];
 

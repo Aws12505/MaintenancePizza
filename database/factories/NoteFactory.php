@@ -2,13 +2,15 @@
 
 namespace Database\Factories;
 
-use App\Models\Warranty;
+use App\Models\Note;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends Factory<Warranty>
+ * @extends Factory<Note>
+ *
+ * The polymorphic owner (`notable`) is supplied by the caller via ->for(...).
  */
-class WarrantyFactory extends Factory
+class NoteFactory extends Factory
 {
     /**
      * Define the model's default state.
@@ -18,8 +20,8 @@ class WarrantyFactory extends Factory
     public function definition(): array
     {
         return [
+            'type' => null,
             'body' => fake()->sentence(),
-            'expiry_date' => fake()->dateTimeBetween('now', '+2 years')->format('Y-m-d'),
         ];
     }
 }

@@ -28,14 +28,31 @@ class TicketIssueService
         'children',
         'creator',
         'statusChanges',
+        'notes.attachments',
+        'notes.creator',
+        'attachments',
         'diagnoses.attachments',
+        'diagnoses.notes.attachments',
+        'diagnoses.notes.creator',
         'attendanceEntries.technician',
         'attendanceEntries.attachments',
+        'attendanceEntries.notes.attachments',
+        'attendanceEntries.notes.creator',
         'partUsages.part',
         'partUsages.attachments',
+        'partUsages.notes.attachments',
+        'partUsages.notes.creator',
         'payEntries.technician',
+        'payEntries.attachments',
+        'payEntries.notes.attachments',
+        'payEntries.notes.creator',
         'warranties.attachments',
+        'warranties.notes.attachments',
+        'warranties.notes.creator',
         'assignments.delays',
+        'assignments.attachments',
+        'assignments.notes.attachments',
+        'assignments.notes.creator',
         'technicians',
     ];
 
@@ -43,6 +60,8 @@ class TicketIssueService
         private WorkflowRecordService $workflow,
         private AssignmentService $assignments,
         private CatalogService $catalog,
+        private NoteService $notes,
+        private AttachmentService $attachments,
     ) {}
 
     /**
@@ -109,6 +128,20 @@ class TicketIssueService
         });
 
         return $this->present($child->load(['issue', 'parent']));
+    }
+
+    /**
+     * Cancel an issue (records the reason). Unlike deferral it spawns no child.
+     *
+     * @return array<string, mixed>
+     */
+    public function cancel(TicketIssue $ticketIssue, string $reason): array
+    {
+        DB::transaction(function () use ($ticketIssue, $reason) {
+            TicketStatusService::changeIssueStatus($ticketIssue, IssueStatus::Cancelled, $reason);
+        });
+
+        return $this->present($ticketIssue->load(['issue', 'statusChanges']));
     }
 
     /**
@@ -198,6 +231,8 @@ class TicketIssueService
             'assignments' => $this->mapLoaded($issue, 'assignments', fn ($a) => $this->assignments->present($a)),
             'technicians' => $this->mapLoaded($issue, 'technicians', fn ($t) => $this->catalog->presentTechnician($t)),
             'status_changes' => $this->mapLoaded($issue, 'statusChanges', fn ($s) => $this->presentStatusChange($s)),
+            'notes' => $this->notes->presentMany($issue),
+            'attachments' => $this->attachments->presentMany($issue),
             'created_by' => $issue->created_by,
             'creator' => $issue->relationLoaded('creator') && $issue->creator
                 ? $this->catalog->presentUser($issue->creator)

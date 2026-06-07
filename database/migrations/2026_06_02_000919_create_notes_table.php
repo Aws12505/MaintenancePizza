@@ -8,11 +8,14 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('warranties', function (Blueprint $table) {
+        Schema::create('notes', function (Blueprint $table) {
             $table->id();
+            // Polymorphic owner: ticket, issue, attendance entry, diagnosis, ...
+            $table->morphs('notable');
+            // Optional category. Ticket final notes use App\Enums\FinalNoteType
+            // ('final_notes' | 'what_we_learned'); generic notes leave this null.
+            $table->string('type')->nullable();
             $table->text('body');
-            // Required: the date the warranty coverage expires.
-            $table->date('expiry_date');
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
         });
@@ -20,6 +23,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('warranties');
+        Schema::dropIfExists('notes');
     }
 };

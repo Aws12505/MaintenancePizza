@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasNotesAndAttachments;
 use Database\Factories\PartFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,7 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Part extends Model
 {
     /** @use HasFactory<PartFactory> */
-    use HasFactory, SoftDeletes;
+    use HasFactory, HasNotesAndAttachments, SoftDeletes;
 
     protected $fillable = ['name'];
 

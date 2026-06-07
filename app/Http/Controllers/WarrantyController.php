@@ -19,6 +19,7 @@ class WarrantyController extends Controller
             'data' => $this->workflow->createWarranty(
                 $data['ticket_issue_ids'],
                 $data['body'],
+                $data['expiry_date'],
                 (array) $request->file('files', []),
             ),
         ], 201);
