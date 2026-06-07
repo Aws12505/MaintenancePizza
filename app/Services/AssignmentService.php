@@ -95,6 +95,30 @@ class AssignmentService
     }
 
     /**
+     * Mark an assignment as entered in error.
+     *
+     * @return array<string, mixed>
+     */
+    public function markAssignmentMistaken(Assignment $assignment): array
+    {
+        $assignment->update(['mistaken' => true]);
+
+        return $this->present($assignment->load(['delays', ...self::RECORD_LOADS]));
+    }
+
+    /**
+     * Mark a delay record as entered in error.
+     *
+     * @return array<string, mixed>
+     */
+    public function markDelayMistaken(AssignmentDelay $delay): array
+    {
+        $delay->update(['mistaken' => true]);
+
+        return $this->presentDelay($delay->load(['notes.attachments', 'notes.creator', 'attachments']));
+    }
+
+    /**
      * Replace technicians on the assignment's issues — NOT a delay.
      *
      * @param  array<int>  $technicianIds
@@ -125,6 +149,7 @@ class AssignmentService
             'id' => $assignment->id,
             'assigned_date' => $assignment->assigned_date?->toDateString(),
             'assigned_hour' => $assignment->assigned_hour,
+            'mistaken' => $assignment->mistaken,
             'delays' => $assignment->relationLoaded('delays')
                 ? $assignment->delays->map(fn (AssignmentDelay $d) => $this->presentDelay($d))->all()
                 : null,
@@ -152,6 +177,7 @@ class AssignmentService
             'new_date' => $delay->new_date?->toDateString(),
             'new_hour' => $delay->new_hour,
             'reason' => $delay->reason,
+            'mistaken' => $delay->mistaken,
             'notes' => $this->notes->presentMany($delay),
             'attachments' => $this->attachments->presentMany($delay),
             'created_by' => $delay->created_by,

@@ -13,6 +13,7 @@ return new class extends Migration
             $table->text('body');
             // Required: the date the warranty coverage expires.
             $table->date('expiry_date');
+            $table->boolean('mistaken')->default(false);
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
         });

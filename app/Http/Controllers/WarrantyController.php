@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreWarrantyRequest;
 use App\Models\Store;
 use App\Models\Ticket;
+use App\Models\Warranty;
 use App\Services\WorkflowRecordService;
 
 class WarrantyController extends Controller
@@ -23,5 +24,10 @@ class WarrantyController extends Controller
                 (array) $request->file('files', []),
             ),
         ], 201);
+    }
+
+    public function mistaken(Store $store, Ticket $ticket, Warranty $warranty)
+    {
+        return ['data' => $this->workflow->markWarrantyMistaken($warranty)];
     }
 }

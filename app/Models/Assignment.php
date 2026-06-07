@@ -14,7 +14,7 @@ class Assignment extends Model
     /** @use HasFactory<AssignmentFactory> */
     use HasFactory, HasNotesAndAttachments;
 
-    protected $fillable = ['assigned_date', 'assigned_hour'];
+    protected $fillable = ['assigned_date', 'assigned_hour', 'mistaken'];
 
     /**
      * @return array<string, string>
@@ -23,6 +23,7 @@ class Assignment extends Model
     {
         return [
             'assigned_date' => 'date',
+            'mistaken' => 'boolean',
         ];
     }
 

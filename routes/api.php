@@ -130,6 +130,9 @@ Route::middleware('auth.token.store')->group(function () {
         Route::post('attendance-entries/{attendanceEntry}/mistaken', [AttendanceEntryController::class, 'mistaken'])->name('tickets.attendance.mistaken');
         Route::post('part-usages/{partUsage}/mistaken', [PartUsageController::class, 'mistaken'])->name('tickets.part-usages.mistaken');
         Route::post('pay-entries/{payEntry}/mistaken', [PayEntryController::class, 'mistaken'])->name('tickets.pay-entries.mistaken');
+        Route::post('warranties/{warranty}/mistaken', [WarrantyController::class, 'mistaken'])->name('tickets.warranties.mistaken');
+        Route::post('assignments/{assignment}/mistaken', [AssignmentController::class, 'mistaken'])->name('tickets.assignments.mistaken');
+        Route::post('assignments/{assignment}/delays/{delay}/mistaken', [AssignmentDelayController::class, 'mistaken'])->name('tickets.assignments.delays.mistaken');
 
         // Notes & attachments for each leaf workflow record (any number).
         Route::post('diagnoses/{diagnosis}/notes', [NoteController::class, 'diagnosis'])->name('tickets.diagnoses.notes');

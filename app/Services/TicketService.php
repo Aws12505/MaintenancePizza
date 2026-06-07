@@ -11,6 +11,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -59,16 +60,26 @@ class TicketService
 
     /**
      * @param  array<string, mixed>  $data
+     * @param  array<int, UploadedFile>  $ticketFiles  Direct ticket attachments.
+     * @param  array<int, array<int, UploadedFile>>  $issueFiles  Per-issue files, keyed by issue array index.
      * @return array<string, mixed>
      */
-    public function create(Store $store, array $data): array
+    public function create(Store $store, array $data, array $ticketFiles = [], array $issueFiles = []): array
     {
-        $ticket = DB::transaction(function () use ($store, $data) {
+        $ticket = DB::transaction(function () use ($store, $data, $ticketFiles, $issueFiles) {
             $ticket = new Ticket(['store_id' => $store->id]);
             $ticket->created_by = Auth::id();
             $ticket->save();
 
-            foreach ($data['issues'] as $line) {
+            // Ticket-level notes (text-only at creation; attach files via POST .../notes afterward).
+            foreach ($data['notes'] ?? [] as $noteData) {
+                $this->notes->store($ticket, $noteData['body'], $noteData['type'] ?? null, []);
+            }
+
+            // Ticket-level direct file attachments.
+            $this->attachments->store($ticket, $ticketFiles);
+
+            foreach ($data['issues'] as $i => $line) {
                 $issue = new TicketIssue([
                     'ticket_id' => $ticket->id,
                     'issue_id' => $line['issue_id'] ?? null,
@@ -79,6 +90,16 @@ class TicketService
                 ]);
                 $issue->created_by = Auth::id();
                 $issue->save();
+
+                // Per-issue notes.
+                foreach ($line['notes'] ?? [] as $noteData) {
+                    $this->notes->store($issue, $noteData['body'], $noteData['type'] ?? null, []);
+                }
+
+                // Per-issue direct file attachments.
+                if (! empty($issueFiles[$i])) {
+                    $this->attachments->store($issue, $issueFiles[$i]);
+                }
             }
 
             return $ticket;

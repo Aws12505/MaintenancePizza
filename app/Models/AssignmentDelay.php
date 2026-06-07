@@ -20,6 +20,7 @@ class AssignmentDelay extends Model
         'new_date',
         'new_hour',
         'reason',
+        'mistaken',
     ];
 
     /**
@@ -30,6 +31,7 @@ class AssignmentDelay extends Model
         return [
             'old_date' => 'date',
             'new_date' => 'date',
+            'mistaken' => 'boolean',
         ];
     }
 

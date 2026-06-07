@@ -13,7 +13,7 @@ class Warranty extends Model
     /** @use HasFactory<WarrantyFactory> */
     use HasFactory, HasNotesAndAttachments;
 
-    protected $fillable = ['body', 'expiry_date'];
+    protected $fillable = ['body', 'expiry_date', 'mistaken'];
 
     /**
      * @return array<string, string>
@@ -22,6 +22,7 @@ class Warranty extends Model
     {
         return [
             'expiry_date' => 'date',
+            'mistaken' => 'boolean',
         ];
     }
 

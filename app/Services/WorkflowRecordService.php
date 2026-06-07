@@ -200,6 +200,16 @@ class WorkflowRecordService
         return $this->presentWarranty($warranty->load(['ticketIssues', ...self::NOTE_LOADS]));
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    public function markWarrantyMistaken(Warranty $warranty): array
+    {
+        $warranty->update(['mistaken' => true]);
+
+        return $this->presentWarranty($warranty->load(['ticketIssues', ...self::NOTE_LOADS]));
+    }
+
     // ------------------------------------------------------------- Presenters
 
     /**
@@ -306,6 +316,7 @@ class WorkflowRecordService
             'id' => $warranty->id,
             'body' => $warranty->body,
             'expiry_date' => $warranty->expiry_date?->toDateString(),
+            'mistaken' => $warranty->mistaken,
             'attachments' => $this->presentAttachments($warranty),
             'notes' => $this->notes->presentMany($warranty),
             'ticket_issue_ids' => $this->ticketIssueIds($warranty),
