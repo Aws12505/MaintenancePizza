@@ -30,34 +30,34 @@ class TicketIssueService
         'statusChanges.creator',
         'notes.attachments',
         'notes.creator',
-        'notes.attachments.creator',
+        'notes.attachments',
         'attachments.creator',
         'diagnoses.creator',
-        'diagnoses.attachments.creator',
+        'diagnoses.attachments',
         'diagnoses.notes.attachments',
         'diagnoses.notes.creator',
         'attendanceEntries.creator',
         'attendanceEntries.technician',
-        'attendanceEntries.attachments.creator',
+        'attendanceEntries.attachments',
         'attendanceEntries.notes.attachments',
         'attendanceEntries.notes.creator',
         'partUsages.creator',
         'partUsages.part',
-        'partUsages.attachments.creator',
+        'partUsages.attachments',
         'partUsages.notes.attachments',
         'partUsages.notes.creator',
         'payEntries.creator',
         'payEntries.technician',
-        'payEntries.attachments.creator',
+        'payEntries.attachments',
         'payEntries.notes.attachments',
         'payEntries.notes.creator',
         'warranties.creator',
-        'warranties.attachments.creator',
+        'warranties.attachments',
         'warranties.notes.attachments',
         'warranties.notes.creator',
         'assignments.creator',
         'assignments.delays',
-        'assignments.attachments.creator',
+        'assignments.attachments',
         'assignments.notes.attachments',
         'assignments.notes.creator',
         'technicians',
@@ -69,7 +69,8 @@ class TicketIssueService
         private CatalogService $catalog,
         private NoteService $notes,
         private AttachmentService $attachments,
-    ) {}
+    ) {
+    }
 
     /**
      * @return array<int, array<string, mixed>>
@@ -77,7 +78,7 @@ class TicketIssueService
     public function index(Ticket $ticket): array
     {
         return $ticket->ticketIssues()->with($this->detailWith)->get()
-            ->map(fn (TicketIssue $i) => $this->present($i))->all();
+            ->map(fn(TicketIssue $i) => $this->present($i))->all();
     }
 
     /**
@@ -106,7 +107,7 @@ class TicketIssueService
         });
 
         return $issues->load(['issue', 'statusChanges'])
-            ->map(fn (TicketIssue $i) => $this->present($i))->all();
+            ->map(fn(TicketIssue $i) => $this->present($i))->all();
     }
 
     /**
@@ -146,7 +147,7 @@ class TicketIssueService
             $ticket->ticketIssues()
                 ->where('status', '!=', IssueStatus::Cancelled->value)
                 ->get()
-                ->each(fn (TicketIssue $issue) => TicketStatusService::changeIssueStatus($issue, IssueStatus::Cancelled, $reason));
+                ->each(fn(TicketIssue $issue) => TicketStatusService::changeIssueStatus($issue, IssueStatus::Cancelled, $reason));
         });
     }
 
@@ -174,7 +175,7 @@ class TicketIssueService
     public function attachTechnicians(Ticket $ticket, array $ticketIssueIds, array $technicianIds): array
     {
         $pivot = ['created_by' => Auth::id()];
-        $technicians = collect($technicianIds)->mapWithKeys(fn ($id) => [$id => $pivot])->all();
+        $technicians = collect($technicianIds)->mapWithKeys(fn($id) => [$id => $pivot])->all();
         $issues = $ticket->ticketIssues()->whereIn('id', $ticketIssueIds)->get();
 
         DB::transaction(function () use ($issues, $technicians) {
@@ -183,7 +184,7 @@ class TicketIssueService
             }
         });
 
-        return $issues->load('technicians')->map(fn (TicketIssue $i) => $this->present($i))->all();
+        return $issues->load('technicians')->map(fn(TicketIssue $i) => $this->present($i))->all();
     }
 
     /**
@@ -208,16 +209,16 @@ class TicketIssueService
      */
     public function validateIssuesBelongToTicket(Validator $validator, ?Ticket $ticket, array $ids): void
     {
-        if (! $ticket || empty($ids)) {
+        if (!$ticket || empty($ids)) {
             return;
         }
 
         $invalid = $this->issuesNotBelongingToTicket($ticket, $ids);
 
-        if (! empty($invalid)) {
+        if (!empty($invalid)) {
             $validator->errors()->add(
                 'ticket_issue_ids',
-                'The selected issues do not all belong to this ticket: '.implode(', ', $invalid).'.'
+                'The selected issues do not all belong to this ticket: ' . implode(', ', $invalid) . '.'
             );
         }
     }
@@ -241,16 +242,16 @@ class TicketIssueService
             'status' => ['value' => $issue->status->value, 'label' => $issue->status->label()],
             'parent_id' => $issue->parent_id,
             'children' => $issue->relationLoaded('children')
-                ? $issue->children->map(fn (TicketIssue $c) => $this->present($c))->all()
+                ? $issue->children->map(fn(TicketIssue $c) => $this->present($c))->all()
                 : null,
-            'diagnoses' => $this->mapLoaded($issue, 'diagnoses', fn ($d) => $this->workflow->presentDiagnosis($d)),
-            'attendance_entries' => $this->mapLoaded($issue, 'attendanceEntries', fn ($a) => $this->workflow->presentAttendance($a)),
-            'part_usages' => $this->mapLoaded($issue, 'partUsages', fn ($p) => $this->workflow->presentPartUsage($p)),
-            'pay_entries' => $this->mapLoaded($issue, 'payEntries', fn ($p) => $this->workflow->presentPayEntry($p)),
-            'warranties' => $this->mapLoaded($issue, 'warranties', fn ($w) => $this->workflow->presentWarranty($w)),
-            'assignments' => $this->mapLoaded($issue, 'assignments', fn ($a) => $this->assignments->present($a)),
-            'technicians' => $this->mapLoaded($issue, 'technicians', fn ($t) => $this->catalog->presentTechnician($t)),
-            'status_changes' => $this->mapLoaded($issue, 'statusChanges', fn ($s) => $this->presentStatusChange($s)),
+            'diagnoses' => $this->mapLoaded($issue, 'diagnoses', fn($d) => $this->workflow->presentDiagnosis($d)),
+            'attendance_entries' => $this->mapLoaded($issue, 'attendanceEntries', fn($a) => $this->workflow->presentAttendance($a)),
+            'part_usages' => $this->mapLoaded($issue, 'partUsages', fn($p) => $this->workflow->presentPartUsage($p)),
+            'pay_entries' => $this->mapLoaded($issue, 'payEntries', fn($p) => $this->workflow->presentPayEntry($p)),
+            'warranties' => $this->mapLoaded($issue, 'warranties', fn($w) => $this->workflow->presentWarranty($w)),
+            'assignments' => $this->mapLoaded($issue, 'assignments', fn($a) => $this->assignments->present($a)),
+            'technicians' => $this->mapLoaded($issue, 'technicians', fn($t) => $this->catalog->presentTechnician($t)),
+            'status_changes' => $this->mapLoaded($issue, 'statusChanges', fn($s) => $this->presentStatusChange($s)),
             'notes' => $this->notes->presentMany($issue),
             'attachments' => $this->attachments->presentMany($issue),
             'created_by' => $issue->created_by,
@@ -285,7 +286,7 @@ class TicketIssueService
      */
     private function mapLoaded(TicketIssue $issue, string $relation, callable $present): ?array
     {
-        if (! $issue->relationLoaded($relation)) {
+        if (!$issue->relationLoaded($relation)) {
             return null;
         }
 
