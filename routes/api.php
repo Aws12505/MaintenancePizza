@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AssignmentController;
+use App\Http\Controllers\DailyPayEntryController;
 use App\Http\Controllers\AssignmentDelayController;
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\AttendanceEntryController;
@@ -60,6 +61,16 @@ Route::middleware('auth.token.store')->group(function () {
     Route::post('categories/{category}/attachments', [AttachmentController::class, 'category'])->name('categories.attachments');
     Route::post('parts/{part}/notes', [NoteController::class, 'part'])->name('parts.notes');
     Route::post('parts/{part}/attachments', [AttachmentController::class, 'part'])->name('parts.attachments');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Daily Pay Entries (global, not store-scoped)
+    |--------------------------------------------------------------------------
+    */
+    Route::get('daily-pay-entries', [DailyPayEntryController::class, 'index'])->name('daily-pay-entries.index');
+    Route::post('daily-pay-entries', [DailyPayEntryController::class, 'store'])->name('daily-pay-entries.store');
+    Route::get('daily-pay-entries/{dailyPayEntry}', [DailyPayEntryController::class, 'show'])->name('daily-pay-entries.show');
+    Route::post('daily-pay-entries/{dailyPayEntry}/edit', [DailyPayEntryController::class, 'edit'])->name('daily-pay-entries.edit');
 
     /*
     |--------------------------------------------------------------------------

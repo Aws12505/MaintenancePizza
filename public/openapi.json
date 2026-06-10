@@ -48,6 +48,10 @@
     {
       "name": "Export",
       "description": "Full data export"
+    },
+    {
+      "name": "Daily Pay",
+      "description": "End-of-day payment records for technicians. One entry per submission covers any number of technician × store combinations (lines). Editing replaces the full entry while keeping a JSON snapshot of the prior state as revision history."
     }
   ],
   "x-tagGroups": [
@@ -72,6 +76,12 @@
       "name": "Export",
       "tags": [
         "Export"
+      ]
+    },
+    {
+      "name": "Pay",
+      "tags": [
+        "Daily Pay"
       ]
     }
   ],
@@ -3550,6 +3560,217 @@
           }
         }
       }
+    },
+    "/daily-pay-entries": {
+      "get": {
+        "tags": ["Daily Pay"],
+        "summary": "List daily pay entries",
+        "description": "Paginated list of daily pay entries with optional filters. Each item is a summary (no notes, attachments, or revision history — use the detail endpoint for those).",
+        "parameters": [
+          {
+            "name": "technician_ids[]",
+            "in": "query",
+            "description": "Filter to entries that include a line for at least one of these technician IDs (multi-select).",
+            "schema": { "type": "array", "items": { "type": "integer" } },
+            "style": "form",
+            "explode": true
+          },
+          {
+            "name": "store_ids[]",
+            "in": "query",
+            "description": "Filter to entries that include a line for at least one of these store IDs (multi-select).",
+            "schema": { "type": "array", "items": { "type": "integer" } },
+            "style": "form",
+            "explode": true
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "description": "Exact workday date (YYYY-MM-DD).",
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "date_from",
+            "in": "query",
+            "description": "Workday date range start (inclusive, YYYY-MM-DD).",
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "description": "Workday date range end (inclusive, YYYY-MM-DD).",
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "filled_by",
+            "in": "query",
+            "description": "Filter by the user ID who submitted the entry.",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "created_from",
+            "in": "query",
+            "description": "Entry creation timestamp range start (ISO 8601).",
+            "schema": { "type": "string", "format": "date-time" }
+          },
+          {
+            "name": "created_to",
+            "in": "query",
+            "description": "Entry creation timestamp range end (ISO 8601).",
+            "schema": { "type": "string", "format": "date-time" }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sort column.",
+            "schema": { "type": "string", "enum": ["date", "created_at"], "default": "created_at" }
+          },
+          {
+            "name": "dir",
+            "in": "query",
+            "description": "Sort direction.",
+            "schema": { "type": "string", "enum": ["asc", "desc"], "default": "desc" }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "description": "Items per page (default 15).",
+            "schema": { "type": "integer", "default": 15 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated daily pay entry summaries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/DailyPayEntrySummary" }
+                    },
+                    "links": { "$ref": "#/components/schemas/PaginationLinks" },
+                    "meta": { "$ref": "#/components/schemas/PaginationMeta" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthenticated" }
+        }
+      },
+      "post": {
+        "tags": ["Daily Pay"],
+        "summary": "Create a daily pay entry",
+        "description": "Creates a new end-of-day payment entry. Each `lines[]` element represents one technician working at one store. A technician who worked at multiple stores appears as multiple lines. Notes and file attachments can be included inline per line.\n\n**Multipart form-data required** when uploading files. Field names use bracket notation: `lines[0][files][]`, `lines[0][notes][0][files][]`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": { "$ref": "#/components/schemas/DailyPayEntryInput" }
+            },
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/DailyPayEntryInput" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created entry with all lines, notes, attachments, and linked ticket issues",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/DailyPayEntryResource" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/daily-pay-entries/{dailyPayEntry}": {
+      "get": {
+        "tags": ["Daily Pay"],
+        "summary": "Get a daily pay entry",
+        "description": "Returns the full detail of a daily pay entry including all lines (with notes, attachments, and linked ticket issue IDs) and the complete revision history (snapshots of all previous states with who edited and when).",
+        "parameters": [
+          {
+            "name": "dailyPayEntry",
+            "in": "path",
+            "required": true,
+            "description": "DailyPayEntry ID",
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Full daily pay entry detail with revision history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/DailyPayEntryResource" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/daily-pay-entries/{dailyPayEntry}/edit": {
+      "post": {
+        "tags": ["Daily Pay"],
+        "summary": "Edit a daily pay entry",
+        "description": "Replaces the full content of an existing daily pay entry. Before replacing, the current state is snapshot as a revision record (accessible in the `revisions` array). The same payload shape as create is accepted.\n\nThis is a **full replace** — all existing lines are dropped and recreated from the new payload. Any notes or attachments on old lines will not appear on the new lines unless re-submitted.\n\n**Multipart form-data required** when uploading files.",
+        "parameters": [
+          {
+            "name": "dailyPayEntry",
+            "in": "path",
+            "required": true,
+            "description": "DailyPayEntry ID",
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": { "$ref": "#/components/schemas/DailyPayEntryInput" }
+            },
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/DailyPayEntryInput" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated entry with new lines and a new revision record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/DailyPayEntryResource" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthenticated" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "422": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
     }
   },
   "components": {
@@ -3711,6 +3932,288 @@
       }
     },
     "schemas": {
+      "DailyPayEntryInput": {
+        "type": "object",
+        "required": ["date", "lines"],
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "The workday date for this pay entry (YYYY-MM-DD).",
+            "example": "2026-06-10"
+          },
+          "lines": {
+            "type": "array",
+            "minItems": 1,
+            "description": "One element per technician × store combination worked this day.",
+            "items": {
+              "type": "object",
+              "required": ["technician_id", "store_id"],
+              "properties": {
+                "technician_id": { "type": "integer", "description": "ID of the technician." },
+                "store_id": { "type": "integer", "description": "ID of the store the technician worked at." },
+                "total_working_hours": { "type": "number", "format": "float", "nullable": true, "minimum": 0 },
+                "gas": { "type": "number", "format": "float", "nullable": true, "minimum": 0 },
+                "invoices": { "type": "number", "format": "float", "nullable": true, "minimum": 0 },
+                "hourly_payment_rate": { "type": "number", "format": "float", "nullable": true, "minimum": 0 },
+                "money_owed": { "type": "number", "format": "float", "nullable": true, "minimum": 0 },
+                "travel_time": { "type": "number", "format": "float", "nullable": true, "minimum": 0 },
+                "total_break_time": { "type": "number", "format": "float", "nullable": true, "minimum": 0 },
+                "ticket_issue_ids": {
+                  "type": "array",
+                  "nullable": true,
+                  "description": "Optional ticket issue IDs to link to this line. The technician must already be assigned to each issue.",
+                  "items": { "type": "integer" }
+                },
+                "notes": {
+                  "type": "array",
+                  "nullable": true,
+                  "description": "Notes to attach to this line at creation time.",
+                  "items": {
+                    "type": "object",
+                    "required": ["body"],
+                    "properties": {
+                      "body": { "type": "string" },
+                      "type": { "type": "string", "nullable": true },
+                      "files[]": {
+                        "type": "array",
+                        "nullable": true,
+                        "description": "Files to attach to this note (multipart only — field name lines[N][notes][M][files][]).",
+                        "items": { "type": "string", "format": "binary" }
+                      }
+                    }
+                  }
+                },
+                "files[]": {
+                  "type": "array",
+                  "nullable": true,
+                  "description": "Files to attach directly to this line (multipart only — field name lines[N][files][]).",
+                  "items": { "type": "string", "format": "binary" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "DailyPayEntryResource": {
+        "type": "object",
+        "description": "Full detail of a daily pay entry, including lines with notes/attachments/linked issues and the complete revision history.",
+        "properties": {
+          "id": { "type": "integer" },
+          "date": { "type": "string", "format": "date", "example": "2026-06-10" },
+          "lines": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/DailyPayLineResource" }
+          },
+          "revisions": {
+            "type": "array",
+            "description": "History of all previous states, newest first. Each revision holds a full snapshot of the entry as it was before the edit.",
+            "items": { "$ref": "#/components/schemas/DailyPayEntryRevisionResource" }
+          },
+          "created_by": { "type": "integer", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "DailyPayEntrySummary": {
+        "type": "object",
+        "description": "Lightweight daily pay entry for list responses. Notes, attachments, and revision history are omitted — use the detail endpoint for those.",
+        "properties": {
+          "id": { "type": "integer" },
+          "date": { "type": "string", "format": "date" },
+          "lines": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "description": "Summary line — no notes or attachments.",
+              "properties": {
+                "id": { "type": "integer" },
+                "daily_pay_entry_id": { "type": "integer" },
+                "technician_id": { "type": "integer" },
+                "technician": { "type": "object", "nullable": true },
+                "store_id": { "type": "integer" },
+                "store": {
+                  "type": "object",
+                  "nullable": true,
+                  "properties": {
+                    "id": { "type": "integer" },
+                    "store_number": { "type": "string" }
+                  }
+                },
+                "total_working_hours": { "type": "string", "nullable": true },
+                "gas": { "type": "string", "nullable": true },
+                "invoices": { "type": "string", "nullable": true },
+                "hourly_payment_rate": { "type": "string", "nullable": true },
+                "money_owed": { "type": "string", "nullable": true },
+                "travel_time": { "type": "string", "nullable": true },
+                "total_break_time": { "type": "string", "nullable": true },
+                "created_by": { "type": "integer", "nullable": true },
+                "created_at": { "type": "string", "format": "date-time" },
+                "updated_at": { "type": "string", "format": "date-time" }
+              }
+            }
+          },
+          "created_by": { "type": "integer", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "DailyPayLineResource": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "daily_pay_entry_id": { "type": "integer" },
+          "technician_id": { "type": "integer" },
+          "technician": { "type": "object", "nullable": true, "description": "Technician object (includes category)." },
+          "store_id": { "type": "integer" },
+          "store": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": { "type": "integer" },
+              "store_number": { "type": "string" }
+            }
+          },
+          "total_working_hours": { "type": "string", "nullable": true, "example": "8.50" },
+          "gas": { "type": "string", "nullable": true, "example": "25.00" },
+          "invoices": { "type": "string", "nullable": true, "example": "150.00" },
+          "hourly_payment_rate": { "type": "string", "nullable": true, "example": "18.0000" },
+          "money_owed": { "type": "string", "nullable": true, "example": "153.00" },
+          "travel_time": { "type": "string", "nullable": true, "example": "1.50" },
+          "total_break_time": { "type": "string", "nullable": true, "example": "0.50" },
+          "ticket_issues": {
+            "type": "array",
+            "nullable": true,
+            "description": "Full linked ticket issue details with all relations.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "integer" },
+                "ticket_id": { "type": "integer" },
+                "ticket": {
+                  "type": "object",
+                  "nullable": true,
+                  "properties": {
+                    "id": { "type": "integer" },
+                    "store_id": { "type": "integer" },
+                    "store": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "id": { "type": "integer" },
+                        "store_number": { "type": "string" }
+                      }
+                    },
+                    "created_by": { "type": "integer", "nullable": true },
+                    "creator": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "id": { "type": "integer" },
+                        "name": { "type": "string" },
+                        "email": { "type": "string" }
+                      }
+                    }
+                  }
+                },
+                "issue_id": { "type": "integer", "nullable": true },
+                "issue": {
+                  "type": "object",
+                  "nullable": true,
+                  "properties": {
+                    "id": { "type": "integer" },
+                    "title": { "type": "string" },
+                    "description": { "type": "string", "nullable": true },
+                    "created_by": { "type": "integer", "nullable": true },
+                    "creator": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "id": { "type": "integer" },
+                        "name": { "type": "string" },
+                        "email": { "type": "string" }
+                      }
+                    }
+                  }
+                },
+                "other_title": { "type": "string", "nullable": true },
+                "priority": { "type": "string" },
+                "description": { "type": "string", "nullable": true },
+                "status": { "type": "string" },
+                "technicians": {
+                  "type": "array",
+                  "nullable": true,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "integer" },
+                      "name": { "type": "string" },
+                      "created_by": { "type": "integer", "nullable": true },
+                      "creator": {
+                        "type": "object",
+                        "nullable": true,
+                        "properties": {
+                          "id": { "type": "integer" },
+                          "name": { "type": "string" },
+                          "email": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                },
+                "created_by": { "type": "integer", "nullable": true },
+                "creator": {
+                  "type": "object",
+                  "nullable": true,
+                  "properties": {
+                    "id": { "type": "integer" },
+                    "name": { "type": "string" },
+                    "email": { "type": "string" }
+                  }
+                },
+                "created_at": { "type": "string", "format": "date-time" },
+                "updated_at": { "type": "string", "format": "date-time" }
+              }
+            }
+          },
+          "notes": {
+            "type": "array",
+            "nullable": true,
+            "items": { "$ref": "#/components/schemas/Note" }
+          },
+          "attachments": {
+            "type": "array",
+            "nullable": true,
+            "items": { "$ref": "#/components/schemas/Attachment" }
+          },
+          "created_by": { "type": "integer", "nullable": true },
+          "creator": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": { "type": "integer" },
+              "name": { "type": "string" },
+              "email": { "type": "string" }
+            }
+          },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "DailyPayEntryRevisionResource": {
+        "type": "object",
+        "description": "A snapshot of the entry's full state immediately before an edit was made.",
+        "properties": {
+          "id": { "type": "integer" },
+          "daily_pay_entry_id": { "type": "integer" },
+          "snapshot": {
+            "type": "object",
+            "description": "Full DailyPayEntryResource as it existed before this edit, stored as JSON."
+          },
+          "edited_by": { "type": "integer", "nullable": true, "description": "ID of the user who performed the edit." },
+          "created_at": { "type": "string", "format": "date-time", "description": "When the edit occurred." }
+        }
+      },
       "Priority": {
         "type": "object",
         "description": "Enum wrapper returned by the API for priority fields.",

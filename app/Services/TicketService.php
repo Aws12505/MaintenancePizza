@@ -28,10 +28,12 @@ class TicketService
     private array $listWith = [
         'store',
         'ticketIssues.issue',
+        'ticketIssues.creator',
         'creator',
         'notes.attachments',
         'notes.creator',
-        'attachments',
+        'notes.attachments.creator',
+        'attachments.creator',
     ];
 
     public function __construct(

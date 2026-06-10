@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class TicketIssue extends Model
 {
@@ -124,5 +125,17 @@ class TicketIssue extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /** @return BelongsToMany<DailyPayLine, $this> */
+    public function dailyPayLines(): BelongsToMany
+    {
+        return $this->belongsToMany(DailyPayLine::class, 'daily_pay_line_ticket_issue')->withTimestamps();
+    }
+
+    /** @return HasManyThrough<DailyPayEntry, DailyPayLine, $this> */
+    public function dailyPayEntries(): HasManyThrough
+    {
+        return $this->hasManyThrough(DailyPayEntry::class, DailyPayLine::class);
     }
 }
