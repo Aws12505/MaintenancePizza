@@ -20,26 +20,37 @@ use Illuminate\Support\Facades\DB;
 class WorkflowRecordService
 {
     private const CLOCKS = [
-        'start_clock', 'end_clock', 'start_break', 'end_break', 'start_parts_run', 'end_parts_run',
+        'start_clock',
+        'end_clock',
+        'start_break',
+        'end_break',
+        'start_parts_run',
+        'end_parts_run',
     ];
 
     private const PAY_FIELDS = [
-        'base_pay', 'performance_pay', 'driving_time', 'miles_driven',
-        'per_mile_rate', 'driving_base_pay', 'driving_performance_pay',
+        'base_pay',
+        'performance_pay',
+        'driving_time',
+        'miles_driven',
+        'per_mile_rate',
+        'driving_base_pay',
+        'driving_performance_pay',
     ];
 
     public function __construct(
         private AttachmentService $attachments,
         private CatalogService $catalog,
         private NoteService $notes,
-    ) {}
+    ) {
+    }
 
     /**
      * Eager loads for a record's notes (with their files + author) and files.
      *
      * @var list<string>
      */
-    private const NOTE_LOADS = ['attachments', 'notes.attachments', 'notes.creator'];
+    private const NOTE_LOADS = ['attachments', 'notes.attachments', 'notes'];
 
     // ---------------------------------------------------------------- Diagnosis
 
@@ -332,11 +343,11 @@ class WorkflowRecordService
      */
     private function presentAttachments($model): ?array
     {
-        if (! $model->relationLoaded('attachments')) {
+        if (!$model->relationLoaded('attachments')) {
             return null;
         }
 
-        return $model->attachments->map(fn ($a) => $this->attachments->present($a))->all();
+        return $model->attachments->map(fn($a) => $this->attachments->present($a))->all();
     }
 
     /**

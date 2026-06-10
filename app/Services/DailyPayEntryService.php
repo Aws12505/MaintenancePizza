@@ -27,15 +27,15 @@ class DailyPayEntryService
     private const SHOW_WITH = [
         'lines.technician.category',
         'lines.store',
-        'lines.creator',
+        'lines',
         'lines.ticketIssues.ticket.store',
-        'lines.ticketIssues.ticket.creator',
-        'lines.ticketIssues.issue.creator',
+        'lines.ticketIssues.ticket',
+        'lines.ticketIssues.issue',
         'lines.ticketIssues.technicians.category',
-        'lines.ticketIssues.technicians.creator',
-        'lines.ticketIssues.creator',
+        'lines.ticketIssues.technicians',
+        'lines.ticketIssues',
         'lines.notes.attachments',
-        'lines.notes.creator',
+        'lines.notes',
         'lines.attachments',
         'revisions',
     ];
@@ -49,7 +49,8 @@ class DailyPayEntryService
         private NoteService $notes,
         private AttachmentService $attachments,
         private CatalogService $catalog,
-    ) {}
+    ) {
+    }
 
     /**
      * @param  array<string, mixed>  $validated
@@ -90,14 +91,14 @@ class DailyPayEntryService
 
             DailyPayEntryRevision::create([
                 'daily_pay_entry_id' => $entry->id,
-                'snapshot'           => $snapshot,
-                'edited_by'          => Auth::id(),
+                'snapshot' => $snapshot,
+                'edited_by' => Auth::id(),
             ]);
 
             // Polymorphic notes/attachments have no DB-level cascade; walk bottom-up.
             $entry->load('lines.notes.attachments', 'lines.attachments');
             $entry->lines->each(function (DailyPayLine $line) {
-                $line->notes->each(fn ($note) => $note->attachments()->delete());
+                $line->notes->each(fn($note) => $note->attachments()->delete());
                 $line->notes()->delete();
                 $line->attachments()->delete();
             });
@@ -121,37 +122,37 @@ class DailyPayEntryService
         /** @var Builder<DailyPayEntry> $query */
         $query = DailyPayEntry::query()->with(self::LIST_WITH);
 
-        if (! empty($filters['technician_ids'])) {
+        if (!empty($filters['technician_ids'])) {
             $ids = (array) $filters['technician_ids'];
-            $query->whereHas('lines', fn (Builder $q) => $q->whereIn('technician_id', $ids));
+            $query->whereHas('lines', fn(Builder $q) => $q->whereIn('technician_id', $ids));
         }
 
-        if (! empty($filters['store_ids'])) {
+        if (!empty($filters['store_ids'])) {
             $ids = (array) $filters['store_ids'];
-            $query->whereHas('lines', fn (Builder $q) => $q->whereIn('store_id', $ids));
+            $query->whereHas('lines', fn(Builder $q) => $q->whereIn('store_id', $ids));
         }
 
-        if (! empty($filters['date'])) {
+        if (!empty($filters['date'])) {
             $query->whereDate('date', $filters['date']);
         }
 
-        if (! empty($filters['date_from'])) {
+        if (!empty($filters['date_from'])) {
             $query->whereDate('date', '>=', $filters['date_from']);
         }
 
-        if (! empty($filters['date_to'])) {
+        if (!empty($filters['date_to'])) {
             $query->whereDate('date', '<=', $filters['date_to']);
         }
 
-        if (! empty($filters['filled_by'])) {
+        if (!empty($filters['filled_by'])) {
             $query->where('created_by', $filters['filled_by']);
         }
 
-        if (! empty($filters['created_from'])) {
+        if (!empty($filters['created_from'])) {
             $query->where('created_at', '>=', $filters['created_from']);
         }
 
-        if (! empty($filters['created_to'])) {
+        if (!empty($filters['created_to'])) {
             $query->where('created_at', '<=', $filters['created_to']);
         }
 
@@ -164,7 +165,7 @@ class DailyPayEntryService
         $perPage = max(1, (int) ($filters['per_page'] ?? 15));
 
         return $query->paginate($perPage)
-            ->through(fn (DailyPayEntry $e) => $this->presentSummary($e));
+            ->through(fn(DailyPayEntry $e) => $this->presentSummary($e));
     }
 
     /** @return array<string, mixed> */
@@ -185,13 +186,13 @@ class DailyPayEntryService
         $line = $entry->lines()->create(array_merge(
             [
                 'technician_id' => $data['technician_id'],
-                'store_id'      => $data['store_id'],
-                'created_by'    => Auth::id(),
+                'store_id' => $data['store_id'],
+                'created_by' => Auth::id(),
             ],
             array_intersect_key($data, array_flip(self::LINE_FIELDS))
         ));
 
-        if (! empty($data['ticket_issue_ids'])) {
+        if (!empty($data['ticket_issue_ids'])) {
             $line->ticketIssues()->attach($data['ticket_issue_ids']);
         }
 
@@ -215,13 +216,13 @@ class DailyPayEntryService
     private function presentEntry(DailyPayEntry $entry): array
     {
         return [
-            'id'         => $entry->id,
-            'date'       => $entry->date->toDateString(),
-            'lines'      => $entry->relationLoaded('lines')
-                ? $entry->lines->map(fn (DailyPayLine $l) => $this->presentLine($l))->all()
+            'id' => $entry->id,
+            'date' => $entry->date->toDateString(),
+            'lines' => $entry->relationLoaded('lines')
+                ? $entry->lines->map(fn(DailyPayLine $l) => $this->presentLine($l))->all()
                 : null,
-            'revisions'  => $entry->relationLoaded('revisions')
-                ? $entry->revisions->map(fn (DailyPayEntryRevision $r) => $this->presentRevision($r))->all()
+            'revisions' => $entry->relationLoaded('revisions')
+                ? $entry->revisions->map(fn(DailyPayEntryRevision $r) => $this->presentRevision($r))->all()
                 : null,
             'created_by' => $entry->created_by,
             'created_at' => $entry->created_at,
@@ -233,10 +234,10 @@ class DailyPayEntryService
     private function presentSummary(DailyPayEntry $entry): array
     {
         return [
-            'id'         => $entry->id,
-            'date'       => $entry->date->toDateString(),
-            'lines'      => $entry->relationLoaded('lines')
-                ? $entry->lines->map(fn (DailyPayLine $l) => $this->presentLineSummary($l))->all()
+            'id' => $entry->id,
+            'date' => $entry->date->toDateString(),
+            'lines' => $entry->relationLoaded('lines')
+                ? $entry->lines->map(fn(DailyPayLine $l) => $this->presentLineSummary($l))->all()
                 : null,
             'created_by' => $entry->created_by,
             'created_at' => $entry->created_at,
@@ -248,34 +249,34 @@ class DailyPayEntryService
     private function presentLine(DailyPayLine $line): array
     {
         return [
-            'id'                  => $line->id,
-            'daily_pay_entry_id'  => $line->daily_pay_entry_id,
-            'technician_id'       => $line->technician_id,
-            'technician'          => $line->relationLoaded('technician') && $line->technician
+            'id' => $line->id,
+            'daily_pay_entry_id' => $line->daily_pay_entry_id,
+            'technician_id' => $line->technician_id,
+            'technician' => $line->relationLoaded('technician') && $line->technician
                 ? $this->catalog->presentTechnician($line->technician)
                 : null,
-            'store_id'            => $line->store_id,
-            'store'               => $line->relationLoaded('store') && $line->store
+            'store_id' => $line->store_id,
+            'store' => $line->relationLoaded('store') && $line->store
                 ? ['id' => $line->store->id, 'store_number' => $line->store->store_number]
                 : null,
             'total_working_hours' => $line->total_working_hours,
-            'gas'                 => $line->gas,
-            'invoices'            => $line->invoices,
+            'gas' => $line->gas,
+            'invoices' => $line->invoices,
             'hourly_payment_rate' => $line->hourly_payment_rate,
-            'money_owed'          => $line->money_owed,
-            'travel_time'         => $line->travel_time,
-            'total_break_time'    => $line->total_break_time,
-            'ticket_issues'       => $line->relationLoaded('ticketIssues')
-                ? $line->ticketIssues->map(fn ($ti) => $this->presentTicketIssue($ti))->all()
+            'money_owed' => $line->money_owed,
+            'travel_time' => $line->travel_time,
+            'total_break_time' => $line->total_break_time,
+            'ticket_issues' => $line->relationLoaded('ticketIssues')
+                ? $line->ticketIssues->map(fn($ti) => $this->presentTicketIssue($ti))->all()
                 : null,
-            'notes'               => $this->notes->presentMany($line),
-            'attachments'         => $this->attachments->presentMany($line),
-            'created_by'          => $line->created_by,
-            'creator'             => $line->relationLoaded('creator') && $line->creator
+            'notes' => $this->notes->presentMany($line),
+            'attachments' => $this->attachments->presentMany($line),
+            'created_by' => $line->created_by,
+            'creator' => $line->relationLoaded('creator') && $line->creator
                 ? ['id' => $line->creator->id, 'name' => $line->creator->name, 'email' => $line->creator->email]
                 : null,
-            'created_at'          => $line->created_at,
-            'updated_at'          => $line->updated_at,
+            'created_at' => $line->created_at,
+            'updated_at' => $line->updated_at,
         ];
     }
 
@@ -283,26 +284,26 @@ class DailyPayEntryService
     private function presentLineSummary(DailyPayLine $line): array
     {
         return [
-            'id'                  => $line->id,
-            'daily_pay_entry_id'  => $line->daily_pay_entry_id,
-            'technician_id'       => $line->technician_id,
-            'technician'          => $line->relationLoaded('technician') && $line->technician
+            'id' => $line->id,
+            'daily_pay_entry_id' => $line->daily_pay_entry_id,
+            'technician_id' => $line->technician_id,
+            'technician' => $line->relationLoaded('technician') && $line->technician
                 ? $this->catalog->presentTechnician($line->technician)
                 : null,
-            'store_id'            => $line->store_id,
-            'store'               => $line->relationLoaded('store') && $line->store
+            'store_id' => $line->store_id,
+            'store' => $line->relationLoaded('store') && $line->store
                 ? ['id' => $line->store->id, 'store_number' => $line->store->store_number]
                 : null,
             'total_working_hours' => $line->total_working_hours,
-            'gas'                 => $line->gas,
-            'invoices'            => $line->invoices,
+            'gas' => $line->gas,
+            'invoices' => $line->invoices,
             'hourly_payment_rate' => $line->hourly_payment_rate,
-            'money_owed'          => $line->money_owed,
-            'travel_time'         => $line->travel_time,
-            'total_break_time'    => $line->total_break_time,
-            'created_by'          => $line->created_by,
-            'created_at'          => $line->created_at,
-            'updated_at'          => $line->updated_at,
+            'money_owed' => $line->money_owed,
+            'travel_time' => $line->travel_time,
+            'total_break_time' => $line->total_break_time,
+            'created_by' => $line->created_by,
+            'created_at' => $line->created_at,
+            'updated_at' => $line->updated_at,
         ];
     }
 
@@ -310,11 +311,11 @@ class DailyPayEntryService
     private function presentRevision(DailyPayEntryRevision $revision): array
     {
         return [
-            'id'                 => $revision->id,
+            'id' => $revision->id,
             'daily_pay_entry_id' => $revision->daily_pay_entry_id,
-            'snapshot'           => $revision->snapshot,
-            'edited_by'          => $revision->edited_by,
-            'created_at'         => $revision->created_at,
+            'snapshot' => $revision->snapshot,
+            'edited_by' => $revision->edited_by,
+            'created_at' => $revision->created_at,
         ];
     }
 
@@ -322,28 +323,28 @@ class DailyPayEntryService
     private function presentTicketIssue(TicketIssue $issue): array
     {
         return [
-            'id'              => $issue->id,
-            'ticket_id'       => $issue->ticket_id,
-            'ticket'          => $issue->relationLoaded('ticket') && $issue->ticket
+            'id' => $issue->id,
+            'ticket_id' => $issue->ticket_id,
+            'ticket' => $issue->relationLoaded('ticket') && $issue->ticket
                 ? ['id' => $issue->ticket->id, 'store_id' => $issue->ticket->store_id, 'store' => $issue->ticket->relationLoaded('store') && $issue->ticket->store ? ['id' => $issue->ticket->store->id, 'store_number' => $issue->ticket->store->store_number] : null, 'created_by' => $issue->ticket->created_by, 'creator' => $issue->ticket->relationLoaded('creator') && $issue->ticket->creator ? ['id' => $issue->ticket->creator->id, 'name' => $issue->ticket->creator->name, 'email' => $issue->ticket->creator->email] : null]
                 : null,
-            'issue_id'        => $issue->issue_id,
-            'issue'           => $issue->relationLoaded('issue') && $issue->issue
+            'issue_id' => $issue->issue_id,
+            'issue' => $issue->relationLoaded('issue') && $issue->issue
                 ? ['id' => $issue->issue->id, 'title' => $issue->issue->title, 'description' => $issue->issue->description, 'created_by' => $issue->issue->created_by, 'creator' => $issue->issue->relationLoaded('creator') && $issue->issue->creator ? ['id' => $issue->issue->creator->id, 'name' => $issue->issue->creator->name, 'email' => $issue->issue->creator->email] : null]
                 : null,
-            'other_title'     => $issue->other_title,
-            'priority'        => $issue->priority,
-            'description'     => $issue->description,
-            'status'          => $issue->status,
-            'technicians'     => $issue->relationLoaded('technicians')
-                ? $issue->technicians->map(fn ($t) => array_merge($this->catalog->presentTechnician($t), ['creator' => $t->relationLoaded('creator') && $t->creator ? ['id' => $t->creator->id, 'name' => $t->creator->name, 'email' => $t->creator->email] : null]))->all()
+            'other_title' => $issue->other_title,
+            'priority' => $issue->priority,
+            'description' => $issue->description,
+            'status' => $issue->status,
+            'technicians' => $issue->relationLoaded('technicians')
+                ? $issue->technicians->map(fn($t) => array_merge($this->catalog->presentTechnician($t), ['creator' => $t->relationLoaded('creator') && $t->creator ? ['id' => $t->creator->id, 'name' => $t->creator->name, 'email' => $t->creator->email] : null]))->all()
                 : null,
-            'created_by'      => $issue->created_by,
-            'creator'         => $issue->relationLoaded('creator') && $issue->creator
+            'created_by' => $issue->created_by,
+            'creator' => $issue->relationLoaded('creator') && $issue->creator
                 ? ['id' => $issue->creator->id, 'name' => $issue->creator->name, 'email' => $issue->creator->email]
                 : null,
-            'created_at'      => $issue->created_at,
-            'updated_at'      => $issue->updated_at,
+            'created_at' => $issue->created_at,
+            'updated_at' => $issue->updated_at,
         ];
     }
 }

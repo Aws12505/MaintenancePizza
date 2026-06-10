@@ -23,17 +23,18 @@ class AssignmentService
      */
     private const RECORD_LOADS = [
         'notes.attachments',
-        'notes.creator',
+        'notes',
         'attachments',
         'delays.notes.attachments',
-        'delays.notes.creator',
+        'delays.notes',
         'delays.attachments',
     ];
 
     public function __construct(
         private NoteService $notes,
         private AttachmentService $attachments,
-    ) {}
+    ) {
+    }
 
     /**
      * @param  array<string, mixed>  $data  ticket_issue_ids, technician_ids, assigned_date, assigned_hour?
@@ -53,7 +54,7 @@ class AssignmentService
 
             $assignment->ticketIssues()->attach($data['ticket_issue_ids']);
 
-            $technicians = collect($data['technician_ids'])->mapWithKeys(fn ($id) => [$id => $pivot])->all();
+            $technicians = collect($data['technician_ids'])->mapWithKeys(fn($id) => [$id => $pivot])->all();
             $issues = $ticket->ticketIssues()->whereIn('id', $data['ticket_issue_ids'])->get();
 
             foreach ($issues as $issue) {
@@ -115,7 +116,7 @@ class AssignmentService
     {
         $delay->update(['mistaken' => true]);
 
-        return $this->presentDelay($delay->load(['notes.attachments', 'notes.creator', 'attachments']));
+        return $this->presentDelay($delay->load(['notes.attachments', 'notes', 'attachments']));
     }
 
     /**
@@ -127,7 +128,7 @@ class AssignmentService
     public function changeTechnicians(Assignment $assignment, array $technicianIds): array
     {
         $pivot = ['created_by' => Auth::id()];
-        $technicians = collect($technicianIds)->mapWithKeys(fn ($id) => [$id => $pivot])->all();
+        $technicians = collect($technicianIds)->mapWithKeys(fn($id) => [$id => $pivot])->all();
 
         DB::transaction(function () use ($assignment, $technicians) {
             $assignment->load('ticketIssues');
@@ -151,7 +152,7 @@ class AssignmentService
             'assigned_hour' => $assignment->assigned_hour,
             'mistaken' => $assignment->mistaken,
             'delays' => $assignment->relationLoaded('delays')
-                ? $assignment->delays->map(fn (AssignmentDelay $d) => $this->presentDelay($d))->all()
+                ? $assignment->delays->map(fn(AssignmentDelay $d) => $this->presentDelay($d))->all()
                 : null,
             'ticket_issue_ids' => $assignment->relationLoaded('ticketIssues')
                 ? $assignment->ticketIssues->pluck('id')->all()
