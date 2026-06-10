@@ -27,7 +27,7 @@ class TicketIssueService
         'parent',
         'children',
         'creator',
-        'statusChanges.creator',
+        'statusChanges',
         'notes.attachments',
         'notes.creator',
         'notes.attachments',
