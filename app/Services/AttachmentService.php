@@ -70,6 +70,9 @@ class AttachmentService
             'mime_type' => $attachment->mime_type,
             'size' => $attachment->size,
             'created_by' => $attachment->created_by,
+            'creator' => $attachment->relationLoaded('creator') && $attachment->creator
+                ? ['id' => $attachment->creator->id, 'name' => $attachment->creator->name, 'email' => $attachment->creator->email]
+                : null,
             'created_at' => $attachment->created_at,
         ];
     }

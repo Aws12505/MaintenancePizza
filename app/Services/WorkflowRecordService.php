@@ -50,7 +50,7 @@ class WorkflowRecordService
      *
      * @var list<string>
      */
-    private const NOTE_LOADS = ['attachments', 'notes.attachments', 'notes'];
+    private const NOTE_LOADS = ['creator', 'attachments.creator', 'notes.creator', 'notes.attachments.creator'];
 
     // ---------------------------------------------------------------- Diagnosis
 
@@ -236,6 +236,9 @@ class WorkflowRecordService
             'notes' => $this->notes->presentMany($diagnosis),
             'ticket_issue_ids' => $this->ticketIssueIds($diagnosis),
             'created_by' => $diagnosis->created_by,
+            'creator' => $diagnosis->relationLoaded('creator') && $diagnosis->creator
+                ? ['id' => $diagnosis->creator->id, 'name' => $diagnosis->creator->name, 'email' => $diagnosis->creator->email]
+                : null,
             'created_at' => $diagnosis->created_at,
             'updated_at' => $diagnosis->updated_at,
         ];
@@ -263,6 +266,9 @@ class WorkflowRecordService
             'notes' => $this->notes->presentMany($entry),
             'ticket_issue_ids' => $this->ticketIssueIds($entry),
             'created_by' => $entry->created_by,
+            'creator' => $entry->relationLoaded('creator') && $entry->creator
+                ? ['id' => $entry->creator->id, 'name' => $entry->creator->name, 'email' => $entry->creator->email]
+                : null,
             'created_at' => $entry->created_at,
             'updated_at' => $entry->updated_at,
         ];
@@ -285,6 +291,9 @@ class WorkflowRecordService
             'notes' => $this->notes->presentMany($usage),
             'ticket_issue_ids' => $this->ticketIssueIds($usage),
             'created_by' => $usage->created_by,
+            'creator' => $usage->relationLoaded('creator') && $usage->creator
+                ? ['id' => $usage->creator->id, 'name' => $usage->creator->name, 'email' => $usage->creator->email]
+                : null,
             'created_at' => $usage->created_at,
             'updated_at' => $usage->updated_at,
         ];
@@ -313,6 +322,9 @@ class WorkflowRecordService
             'notes' => $this->notes->presentMany($entry),
             'ticket_issue_ids' => $this->ticketIssueIds($entry),
             'created_by' => $entry->created_by,
+            'creator' => $entry->relationLoaded('creator') && $entry->creator
+                ? ['id' => $entry->creator->id, 'name' => $entry->creator->name, 'email' => $entry->creator->email]
+                : null,
             'created_at' => $entry->created_at,
             'updated_at' => $entry->updated_at,
         ];
@@ -332,6 +344,9 @@ class WorkflowRecordService
             'notes' => $this->notes->presentMany($warranty),
             'ticket_issue_ids' => $this->ticketIssueIds($warranty),
             'created_by' => $warranty->created_by,
+            'creator' => $warranty->relationLoaded('creator') && $warranty->creator
+                ? ['id' => $warranty->creator->id, 'name' => $warranty->creator->name, 'email' => $warranty->creator->email]
+                : null,
             'created_at' => $warranty->created_at,
             'updated_at' => $warranty->updated_at,
         ];

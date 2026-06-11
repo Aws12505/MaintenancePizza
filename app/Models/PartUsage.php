@@ -38,4 +38,10 @@ class PartUsage extends Model
     {
         return $this->belongsToMany(TicketIssue::class, 'part_ticket_issue')->withTimestamps();
     }
+
+    /** @return BelongsTo<User, $this> */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 }

@@ -36,7 +36,7 @@ class NoteService
             return $note;
         });
 
-        return $note->load(['attachments', 'creator']);
+        return $note->load(['attachments.creator', 'creator']);
     }
 
     /**

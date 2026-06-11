@@ -28,4 +28,10 @@ class DailyPayEntryRevision extends Model
     {
         return $this->belongsTo(DailyPayEntry::class, 'daily_pay_entry_id');
     }
+
+    /** @return BelongsTo<User, $this> */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'edited_by');
+    }
 }

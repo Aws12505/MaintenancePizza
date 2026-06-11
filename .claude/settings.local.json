@@ -10,7 +10,10 @@
       "Bash(Select-Object FullName)",
       "Bash(Get-Content)",
       "Bash(Select-String -Pattern \"^class \")",
-      "Bash(Select-Object -ExpandProperty Line)"
+      "Bash(Select-Object -ExpandProperty Line)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Projects\\\\MaintenancePizza\" -Directory)",
+      "Bash(Select-Object -First 10)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Projects\\\\MaintenancePizza\" -Directory | Select-Object -First 20 | ForEach-Object { $_.Name })"
     ]
   }
 }

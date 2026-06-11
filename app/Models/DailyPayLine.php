@@ -30,12 +30,12 @@ class DailyPayLine extends Model
     {
         return [
             'total_working_hours' => 'decimal:2',
-            'gas'                 => 'decimal:2',
-            'invoices'            => 'decimal:2',
+            'gas' => 'decimal:2',
+            'invoices' => 'decimal:2',
             'hourly_payment_rate' => 'decimal:4',
-            'money_owed'          => 'decimal:2',
-            'travel_time'         => 'decimal:2',
-            'total_break_time'    => 'decimal:2',
+            'money_owed' => 'decimal:2',
+            'travel_time' => 'decimal:2',
+            'total_break_time' => 'decimal:2',
         ];
     }
 
@@ -61,5 +61,11 @@ class DailyPayLine extends Model
     public function ticketIssues(): BelongsToMany
     {
         return $this->belongsToMany(TicketIssue::class, 'daily_pay_line_ticket_issue')->withTimestamps();
+    }
+
+    /** @return BelongsTo<User, $this> */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 }

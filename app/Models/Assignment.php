@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Assignment extends Model
 {
     /** @use HasFactory<AssignmentFactory> */
@@ -37,5 +37,10 @@ class Assignment extends Model
     public function ticketIssues(): BelongsToMany
     {
         return $this->belongsToMany(TicketIssue::class, 'assignment_ticket_issue')->withTimestamps();
+    }
+    /** @return BelongsTo<User, $this> */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 }

@@ -22,12 +22,14 @@ class AssignmentService
      * @var list<string>
      */
     private const RECORD_LOADS = [
-        'notes.attachments',
-        'notes',
-        'attachments',
-        'delays.notes.attachments',
-        'delays.notes',
-        'delays.attachments',
+        'creator',
+        'notes.creator',
+        'notes.attachments.creator',
+        'attachments.creator',
+        'delays.creator',
+        'delays.notes.creator',
+        'delays.notes.attachments.creator',
+        'delays.attachments.creator',
     ];
 
     public function __construct(
@@ -160,6 +162,9 @@ class AssignmentService
             'notes' => $this->notes->presentMany($assignment),
             'attachments' => $this->attachments->presentMany($assignment),
             'created_by' => $assignment->created_by,
+            'creator' => $assignment->relationLoaded('creator') && $assignment->creator
+                ? ['id' => $assignment->creator->id, 'name' => $assignment->creator->name, 'email' => $assignment->creator->email]
+                : null,
             'created_at' => $assignment->created_at,
             'updated_at' => $assignment->updated_at,
         ];
@@ -182,6 +187,9 @@ class AssignmentService
             'notes' => $this->notes->presentMany($delay),
             'attachments' => $this->attachments->presentMany($delay),
             'created_by' => $delay->created_by,
+            'creator' => $delay->relationLoaded('creator') && $delay->creator
+                ? ['id' => $delay->creator->id, 'name' => $delay->creator->name, 'email' => $delay->creator->email]
+                : null,
             'created_at' => $delay->created_at,
         ];
     }

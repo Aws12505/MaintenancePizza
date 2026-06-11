@@ -27,40 +27,39 @@ class TicketIssueService
         'parent',
         'children',
         'creator',
-        'statusChanges',
-        'notes.attachments',
-        'notes',
-        'notes.attachments',
-        'attachments',
-        'diagnoses',
-        'diagnoses.attachments',
-        'diagnoses.notes.attachments',
-        'diagnoses.notes',
-        'attendanceEntries',
+        'statusChanges.creator',
+        'notes.creator',
+        'notes.attachments.creator',
+        'attachments.creator',
+        'diagnoses.creator',
+        'diagnoses.attachments.creator',
+        'diagnoses.notes.creator',
+        'diagnoses.notes.attachments.creator',
+        'attendanceEntries.creator',
         'attendanceEntries.technician',
-        'attendanceEntries.attachments',
-        'attendanceEntries.notes.attachments',
-        'attendanceEntries.notes',
-        'partUsages',
+        'attendanceEntries.attachments.creator',
+        'attendanceEntries.notes.creator',
+        'attendanceEntries.notes.attachments.creator',
+        'partUsages.creator',
         'partUsages.part',
-        'partUsages.attachments',
-        'partUsages.notes.attachments',
-        'partUsages.notes',
-        'payEntries',
+        'partUsages.attachments.creator',
+        'partUsages.notes.creator',
+        'partUsages.notes.attachments.creator',
+        'payEntries.creator',
         'payEntries.technician',
-        'payEntries.attachments',
-        'payEntries.notes.attachments',
-        'payEntries.notes',
-        'warranties',
-        'warranties.attachments',
-        'warranties.notes.attachments',
-        'warranties.notes',
-        'assignments',
-        'assignments.delays',
-        'assignments.attachments',
-        'assignments.notes.attachments',
-        'assignments.notes',
-        'technicians',
+        'payEntries.attachments.creator',
+        'payEntries.notes.creator',
+        'payEntries.notes.attachments.creator',
+        'warranties.creator',
+        'warranties.attachments.creator',
+        'warranties.notes.creator',
+        'warranties.notes.attachments.creator',
+        'assignments.creator',
+        'assignments.delays.creator',
+        'assignments.attachments.creator',
+        'assignments.notes.creator',
+        'assignments.notes.attachments.creator',
+        'technicians.creator',
     ];
 
     public function __construct(
@@ -106,7 +105,7 @@ class TicketIssueService
             }
         });
 
-        return $issues->load(['issue', 'statusChanges'])
+        return $issues->load(['issue', 'creator', 'statusChanges.creator'])
             ->map(fn(TicketIssue $i) => $this->present($i))->all();
     }
 
@@ -135,7 +134,7 @@ class TicketIssueService
             return $child;
         });
 
-        return $this->present($child->load(['issue', 'parent']));
+        return $this->present($child->load(['issue', 'parent', 'creator']));
     }
 
     /**
@@ -162,7 +161,7 @@ class TicketIssueService
             TicketStatusService::changeIssueStatus($ticketIssue, IssueStatus::Cancelled, $reason);
         });
 
-        return $this->present($ticketIssue->load(['issue', 'statusChanges']));
+        return $this->present($ticketIssue->load(['issue', 'creator', 'statusChanges.creator']));
     }
 
     /**
@@ -184,7 +183,7 @@ class TicketIssueService
             }
         });
 
-        return $issues->load('technicians')->map(fn(TicketIssue $i) => $this->present($i))->all();
+        return $issues->load(['creator', 'technicians.creator'])->map(fn(TicketIssue $i) => $this->present($i))->all();
     }
 
     /**
@@ -275,6 +274,9 @@ class TicketIssueService
             'to_status' => $change->to_status->value,
             'reason' => $change->reason,
             'created_by' => $change->created_by,
+            'creator' => $change->relationLoaded('creator') && $change->creator
+                ? $this->catalog->presentUser($change->creator)
+                : null,
             'created_at' => $change->created_at,
         ];
     }

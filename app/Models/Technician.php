@@ -43,4 +43,10 @@ class Technician extends Model
             ->withPivot('created_by')
             ->withTimestamps();
     }
+
+    /** @return BelongsTo<User, $this> */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 }

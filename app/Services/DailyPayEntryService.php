@@ -25,22 +25,25 @@ class DailyPayEntryService
     ];
 
     private const SHOW_WITH = [
+        'creator',
+        'lines.creator',
         'lines.technician.category',
         'lines.store',
-        'lines',
+        'lines.ticketIssues.creator',
+        'lines.ticketIssues.ticket.creator',
         'lines.ticketIssues.ticket.store',
-        'lines.ticketIssues.ticket',
-        'lines.ticketIssues.issue',
+        'lines.ticketIssues.issue.creator',
+        'lines.ticketIssues.technicians.creator',
         'lines.ticketIssues.technicians.category',
-        'lines.ticketIssues.technicians',
-        'lines.ticketIssues',
-        'lines.notes.attachments',
-        'lines.notes',
-        'lines.attachments',
-        'revisions',
+        'lines.notes.creator',
+        'lines.notes.attachments.creator',
+        'lines.attachments.creator',
+        'revisions.creator',
     ];
 
     private const LIST_WITH = [
+        'creator',
+        'lines.creator',
         'lines.technician',
         'lines.store',
     ];
@@ -225,6 +228,9 @@ class DailyPayEntryService
                 ? $entry->revisions->map(fn(DailyPayEntryRevision $r) => $this->presentRevision($r))->all()
                 : null,
             'created_by' => $entry->created_by,
+            'creator' => $entry->relationLoaded('creator') && $entry->creator
+                ? ['id' => $entry->creator->id, 'name' => $entry->creator->name, 'email' => $entry->creator->email]
+                : null,
             'created_at' => $entry->created_at,
             'updated_at' => $entry->updated_at,
         ];
@@ -240,6 +246,9 @@ class DailyPayEntryService
                 ? $entry->lines->map(fn(DailyPayLine $l) => $this->presentLineSummary($l))->all()
                 : null,
             'created_by' => $entry->created_by,
+            'creator' => $entry->relationLoaded('creator') && $entry->creator
+                ? ['id' => $entry->creator->id, 'name' => $entry->creator->name, 'email' => $entry->creator->email]
+                : null,
             'created_at' => $entry->created_at,
             'updated_at' => $entry->updated_at,
         ];
@@ -302,6 +311,9 @@ class DailyPayEntryService
             'travel_time' => $line->travel_time,
             'total_break_time' => $line->total_break_time,
             'created_by' => $line->created_by,
+            'creator' => $line->relationLoaded('creator') && $line->creator
+                ? ['id' => $line->creator->id, 'name' => $line->creator->name, 'email' => $line->creator->email]
+                : null,
             'created_at' => $line->created_at,
             'updated_at' => $line->updated_at,
         ];
@@ -315,6 +327,9 @@ class DailyPayEntryService
             'daily_pay_entry_id' => $revision->daily_pay_entry_id,
             'snapshot' => $revision->snapshot,
             'edited_by' => $revision->edited_by,
+            'creator' => $revision->relationLoaded('creator') && $revision->creator
+                ? ['id' => $revision->creator->id, 'name' => $revision->creator->name, 'email' => $revision->creator->email]
+                : null,
             'created_at' => $revision->created_at,
         ];
     }
