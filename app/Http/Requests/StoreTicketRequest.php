@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\Priority;
+use App\Enums\TicketType;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -21,6 +22,7 @@ class StoreTicketRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'type'   => ['nullable', Rule::enum(TicketType::class)],
             'issues' => ['required', 'array', 'min:1'],
             // Each line is either a catalog issue OR a free-text "other".
             'issues.*.issue_id' => ['nullable', 'integer', 'exists:issues,id'],

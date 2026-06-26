@@ -148,7 +148,7 @@ class DailyPayEntryService
         }
 
         if (!empty($filters['filled_by'])) {
-            $query->where('created_by', $filters['filled_by']);
+            $query->whereIn('created_by', array_filter((array) $filters['filled_by']));
         }
 
         if (!empty($filters['created_from'])) {

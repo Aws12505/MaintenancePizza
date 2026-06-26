@@ -20,13 +20,13 @@ class DailyPayEntryController extends Controller
             'date',
             'date_from',
             'date_to',
-            'filled_by',
             'created_from',
             'created_to',
             'per_page',
             'sort',
             'dir',
         ]);
+        $filters['filled_by'] = array_filter((array) $request->input('filled_by', []));
 
         return response()->json($this->service->list($filters));
     }

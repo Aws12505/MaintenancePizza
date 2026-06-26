@@ -78,6 +78,7 @@ Route::middleware('auth.token.store')->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::get('tickets', [TicketController::class, 'globalIndex'])->name('tickets.global');
+    Route::post('tickets', [TicketController::class, 'storeOther'])->name('tickets.store-other');
     Route::get('export/excel', ExportController::class)->name('export.excel')->withoutMiddleware('auth.token.store')->middleware('auth.secret.key');
 
     /*

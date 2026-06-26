@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\CreateOtherTicketRequest;
 use App\Http\Requests\StoreTicketRequest;
 use App\Models\Store;
 use App\Models\Ticket;
 use App\Services\TicketService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
@@ -21,6 +23,22 @@ class TicketController extends Controller
     public function globalIndex(Request $request)
     {
         return $this->tickets->index($request);
+    }
+
+    public function storeOther(CreateOtherTicketRequest $request): JsonResponse
+    {
+        $ticketFiles = (array) $request->file('files', []);
+
+        $issueFiles = [];
+        foreach ((array) $request->file('issues', []) as $i => $issueFileData) {
+            if (is_array($issueFileData) && ! empty($issueFileData['files'])) {
+                $issueFiles[(int) $i] = (array) $issueFileData['files'];
+            }
+        }
+
+        return response()->json([
+            'data' => $this->tickets->createOther($request->validated(), $ticketFiles, $issueFiles),
+        ], 201);
     }
 
     public function store(StoreTicketRequest $request, Store $store)
