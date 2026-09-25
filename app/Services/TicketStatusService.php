@@ -12,23 +12,39 @@ use App\Models\TicketIssue;
  * column — it is always computed, so it can never drift out of sync.
  *
  * Precedence:
- *   1. any issue In Progress                       -> In Progress
- *   2. else any issue Assigned                     -> Assigned
- *   3. else every issue Cancelled                  -> Cancelled
- *   4. else all issues Complete/Deferred/Cancelled -> Complete
- *   5. else (incl. no issues)                      -> Pending
+ *   1. any issue Waiting                           -> Waiting
+ *   2. else any issue In Progress                  -> In Progress
+ *   3. else any issue Assigned                     -> Assigned
+ *   4. else every issue Cancelled                  -> Cancelled
+ *   5. else all issues Complete/Deferred/Cancelled -> Complete
+ *   6. else (incl. no issues)                      -> Pending
  */
 class TicketStatusService
 {
     public static function for(Ticket $ticket): TicketStatus
     {
         // Use the already-loaded relation when present to avoid extra queries.
-        $statuses = $ticket->relationLoaded('ticketIssues')
+        //
+        // Both branches yield IssueStatus instances: Eloquent's pluck() runs
+        // values through the model's casts, so the query branch is ALREADY
+        // cast and does not need converting. It used to call IssueStatus::from()
+        // on it, which threw a TypeError the moment anything presented a ticket
+        // without the relation loaded -- every existing caller happened to have
+        // eager-loaded it, so the branch was never exercised.
+        //
+        // The normalisation below accepts either shape, so neither a future
+        // caller nor a change in pluck()'s behaviour can bring the bug back.
+        $statuses = ($ticket->relationLoaded('ticketIssues')
             ? $ticket->ticketIssues->pluck('status')
-            : $ticket->ticketIssues()->pluck('status')->map(fn ($s) => IssueStatus::from($s));
+            : $ticket->ticketIssues()->pluck('status')
+        )->map(fn ($s) => $s instanceof IssueStatus ? $s : IssueStatus::from($s));
 
         if ($statuses->isEmpty()) {
             return TicketStatus::Pending;
+        }
+
+        if ($statuses->contains(IssueStatus::Waiting)) {
+            return TicketStatus::Waiting;
         }
 
         if ($statuses->contains(IssueStatus::InProgress)) {

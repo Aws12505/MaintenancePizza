@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Enums\IssueStatus;
+use App\Enums\PartUsagePayer;
+use App\Enums\PaymentStatus;
 use App\Enums\TicketStatus;
 use App\Enums\TicketType;
 use App\Models\Store;
@@ -50,16 +52,29 @@ class TicketService
      */
     public function index(Request $request, ?Store $store = null): LengthAwarePaginator
     {
-        $query = Ticket::query()->with($this->listWith)->withCount('ticketIssues');
-
-        if ($store) {
-            $query->where('store_id', $store->id);
-        }
+        $query = $this->baseQuery($store)->with($this->listWith)->withCount('ticketIssues');
 
         $this->applyFilters($query, $request, $store);
 
         return $query->paginate($request->integer('per_page', 15))
             ->through(fn(Ticket $t) => $this->present($t));
+    }
+
+    /**
+     * A ticket query scoped to $store when given. Shared by index() and
+     * TicketAnalyticsService so store-scoping is defined in exactly one place.
+     *
+     * @return Builder<Ticket>
+     */
+    public function baseQuery(?Store $store = null): Builder
+    {
+        $query = Ticket::query();
+
+        if ($store) {
+            $query->where('store_id', $store->id);
+        }
+
+        return $query;
     }
 
     /**
@@ -248,11 +263,12 @@ class TicketService
 
     /**
      * The full composable filter set. Each clause is a no-op unless its query
-     * parameter is present. Reads only query-string params.
+     * parameter is present. Reads only query-string params. Public so
+     * TicketAnalyticsService can scope its aggregates by the same filters.
      *
      * @param  Builder<Ticket>  $query
      */
-    private function applyFilters(Builder $query, Request $request, ?Store $store = null): void
+    public function applyFilters(Builder $query, Request $request, ?Store $store = null): void
     {
         // ?stores[]=03795-00001 — global index only (store-scoped index is already scoped)
         if (!$store) {
@@ -260,6 +276,42 @@ class TicketService
             if (!empty($storeNumbers)) {
                 $query->whereHas('store', fn(Builder $q) => $q->whereIn('store_number', $storeNumbers));
             }
+        }
+
+        // ?q=fryer — free text over the ticket, its store and its issues.
+        //
+        // The whole disjunction lives inside ONE where() closure. Every other
+        // clause in this method is a top-level where/whereHas, so a bare
+        // orWhere here would bind as "(A and B and C) or q" and quietly return
+        // tickets that fail every other filter. Do not unwrap it.
+        $q = trim((string) $request->query('q', ''));
+        if ($q !== '') {
+            // Escape the LIKE metacharacters so a search for "50%" means "50%".
+            // NOTE: Laravel emits no ESCAPE clause, so MySQL honours the backslash
+            // (its default LIKE escape) while sqlite takes it literally. Production
+            // is MySQL, the test suite is sqlite -- worth knowing before asserting
+            // on a wildcard search.
+            $like = '%' . addcslashes($q, '\%_') . '%';
+
+            $query->where(function (Builder $outer) use ($q, $like) {
+                // Exact only: a LIKE on a bigint can never use the primary key,
+                // and "find ticket 4821" is the commonest search there is.
+                if (ctype_digit($q)) {
+                    $outer->orWhere('tickets.id', (int) $q);
+                }
+
+                $outer->orWhereHas('store', fn(Builder $s) => $s->where('store_number', 'like', $like));
+
+                // A ticket with store_id = null can never match via the store
+                // relation, so searching a store name would silently miss every
+                // "other store" ticket without this line.
+                $outer->orWhere('tickets.other_store', 'like', $like);
+
+                $outer->orWhereHas('ticketIssues', fn(Builder $i) => $i->where(fn(Builder $w) => $w
+                    ->where('ticket_issues.other_title', 'like', $like)
+                    ->orWhere('ticket_issues.description', 'like', $like)
+                    ->orWhereHas('issue', fn(Builder $c) => $c->where('issues.title', 'like', $like))));
+            });
         }
 
         // ?statuses[]=pending&statuses[]=assigned (OR logic)
@@ -289,6 +341,12 @@ class TicketService
             $query->whereHas('ticketIssues', fn(Builder $q) => $q->whereIn('priority', $priorities));
         }
 
+        // ?assigned_priorities[]=urgent&assigned_priorities[]=high
+        $assignedPriorities = array_filter((array) $request->query('assigned_priorities', []));
+        if (!empty($assignedPriorities)) {
+            $query->whereHas('ticketIssues', fn(Builder $q) => $q->whereIn('assigned_priority', $assignedPriorities));
+        }
+
         // ?types[]=normal&types[]=preventive_maintenance
         $types = array_filter((array) $request->query('types', []));
         if (!empty($types)) {
@@ -302,15 +360,57 @@ class TicketService
             $query->whereDate('created_at', '<=', $to);
         }
 
+        // ?assigned_from=2026-01-01&assigned_to=2026-01-31
+        // Tickets carrying an issue SCHEDULED inside the window. This is what
+        // answers "what is on for today"; created_at cannot, because a ticket
+        // raised in March is routinely worked in September.
+        //
+        // Composition with ?technician_ids[]: two independent whereHas clauses
+        // mean "has AN issue scheduled in the window AND has AN issue worked by
+        // Ana" -- possibly two different issues. That is exactly how priorities,
+        // issue_statuses and issue_ids already compose here, so it is the
+        // consistent reading. A same-issue variant would be a different filter.
         $assignedFrom = $request->query('assigned_from');
         $assignedTo   = $request->query('assigned_to');
         if ($assignedFrom || $assignedTo) {
             $query->whereHas('ticketIssues.assignments', function (Builder $q) use ($assignedFrom, $assignedTo) {
+                // Mistaken assignments never count, exactly as mistaken part
+                // usages never count in part_cost_* and mistaken payables never
+                // count in payment_statuses.
+                $q->where('assignments.mistaken', false);
+
+                // Plain where, NOT whereDate: assigned_date is a DATE column, so
+                // wrapping it in DATE() would only defeat the index. created_from
+                // above uses whereDate because created_at is a DATETIME.
                 if ($assignedFrom) {
-                    $q->whereDate('assigned_date', '>=', $assignedFrom);
+                    $q->where('assignments.assigned_date', '>=', $assignedFrom);
                 }
                 if ($assignedTo) {
-                    $q->whereDate('assigned_date', '<=', $assignedTo);
+                    $q->where('assignments.assigned_date', '<=', $assignedTo);
+                }
+            });
+        }
+
+        // ?changed_statuses[]=assigned&changed_statuses[]=complete&changed_statuses[]=waiting
+        // &changed_from=2026-01-01&changed_to=2026-01-31
+        // Tickets with an issue that changed TO any of these statuses within the date range.
+        $changedStatusValues = array_filter((array) $request->query('changed_statuses', []));
+        $changedFrom = $request->query('changed_from');
+        $changedTo   = $request->query('changed_to');
+        if (!empty($changedStatusValues) || $changedFrom || $changedTo) {
+            $changedStatuses = array_values(array_filter(
+                array_map(fn($v) => IssueStatus::tryFrom((string) $v), $changedStatusValues)
+            ));
+
+            $query->whereHas('ticketIssues.statusChanges', function (Builder $q) use ($changedStatuses, $changedFrom, $changedTo) {
+                if (!empty($changedStatuses)) {
+                    $q->whereIn('to_status', array_map(fn(IssueStatus $s) => $s->value, $changedStatuses));
+                }
+                if ($changedFrom) {
+                    $q->whereDate('created_at', '>=', $changedFrom);
+                }
+                if ($changedTo) {
+                    $q->whereDate('created_at', '<=', $changedTo);
                 }
             });
         }
@@ -358,6 +458,15 @@ class TicketService
             $query->whereIn('created_by', $creatorIds);
         }
 
+        // ?payment_statuses[]=unpaid&payment_statuses[]=paid (OR logic)
+        $paymentStatusValues = array_filter((array) $request->query('payment_statuses', []));
+        $paymentStatuses = array_values(array_filter(
+            array_map(fn($v) => PaymentStatus::tryFrom((string) $v), $paymentStatusValues)
+        ));
+        if (!empty($paymentStatuses)) {
+            $this->filterByPaymentStatuses($query, $paymentStatuses);
+        }
+
         match ($request->query('trashed')) {
             'with'  => $query->withTrashed(),
             'only'  => $query->onlyTrashed(),
@@ -369,6 +478,67 @@ class TicketService
             : 'created_at';
         $dir = strtolower((string) $request->query('dir', 'desc')) === 'asc' ? 'asc' : 'desc';
         $query->orderBy($sort, $dir);
+    }
+
+    /**
+     * Filter by whether a ticket's work has been settled through a pay sheet.
+     *
+     * A "payable" is an attendance entry, or a part usage somebody other than
+     * us paid for; mistaken records are never payable. A payable counts as paid
+     * once a daily pay payment has claimed it.
+     *
+     *   unpaid       at least one payable is still unclaimed
+     *   paid         has payables, and every one of them is claimed
+     *   not_payable  has no payables at all
+     *
+     * Mirrors PaymentStatus::rollUp(), which is what the per-record status uses,
+     * so the filter and the badge always agree.
+     *
+     * @param  Builder<Ticket>  $query
+     * @param  array<int, PaymentStatus>  $statuses
+     */
+    private function filterByPaymentStatuses(Builder $query, array $statuses): void
+    {
+        $query->where(function (Builder $outer) use ($statuses) {
+            foreach ($statuses as $status) {
+                $outer->orWhere(fn(Builder $q) => match ($status) {
+                    PaymentStatus::Unpaid => $q->whereHas('ticketIssues', fn(Builder $i) => $this->whereHasPayable($i, claimed: false)),
+                    PaymentStatus::Paid => $q
+                        ->whereHas('ticketIssues', fn(Builder $i) => $this->whereHasPayable($i, claimed: true))
+                        ->whereDoesntHave('ticketIssues', fn(Builder $i) => $this->whereHasPayable($i, claimed: false)),
+                    PaymentStatus::NotPayable => $q
+                        ->whereDoesntHave('ticketIssues', fn(Builder $i) => $this->whereHasPayable($i, claimed: true))
+                        ->whereDoesntHave('ticketIssues', fn(Builder $i) => $this->whereHasPayable($i, claimed: false)),
+                });
+            }
+        });
+    }
+
+    /**
+     * Constrain an issue query to those carrying a payable that either has been
+     * claimed by a payment, or has not.
+     *
+     * @param  Builder<TicketIssue>  $query
+     */
+    private function whereHasPayable(Builder $query, bool $claimed): void
+    {
+        $exists = $claimed ? 'whereExists' : 'whereNotExists';
+
+        $query->where(function (Builder $inner) use ($exists) {
+            $inner
+                ->whereHas('attendanceEntries', fn(Builder $a) => $a
+                    ->where('attendance_entries.mistaken', false)
+                    ->{$exists}(fn(QueryBuilder $c) => $c
+                        ->from('daily_pay_payment_attendance_entry as claim')
+                        ->whereColumn('claim.attendance_entry_id', 'attendance_entries.id')))
+                ->orWhereHas('partUsages', fn(Builder $p) => $p
+                    ->where('part_usages.mistaken', false)
+                    // Parts we bought ourselves are nobody's to be paid back.
+                    ->where('part_usages.paid_by', '!=', PartUsagePayer::Us->value)
+                    ->{$exists}(fn(QueryBuilder $c) => $c
+                        ->from('daily_pay_payment_part_usage as claim')
+                        ->whereColumn('claim.part_usage_id', 'part_usages.id')));
+        });
     }
 
     /**
@@ -395,11 +565,16 @@ class TicketService
         $hasStatus = fn(IssueStatus $s) => fn(Builder $q) => $q->where('status', $s->value);
 
         match ($status) {
-            TicketStatus::InProgress => $query->whereHas('ticketIssues', $hasStatus(IssueStatus::InProgress)),
+            TicketStatus::Waiting => $query->whereHas('ticketIssues', $hasStatus(IssueStatus::Waiting)),
+
+            TicketStatus::InProgress => $query
+                ->whereHas('ticketIssues', $hasStatus(IssueStatus::InProgress))
+                ->whereDoesntHave('ticketIssues', $hasStatus(IssueStatus::Waiting)),
 
             TicketStatus::Assigned => $query
                 ->whereHas('ticketIssues', $hasStatus(IssueStatus::Assigned))
-                ->whereDoesntHave('ticketIssues', $hasStatus(IssueStatus::InProgress)),
+                ->whereDoesntHave('ticketIssues', $hasStatus(IssueStatus::InProgress))
+                ->whereDoesntHave('ticketIssues', $hasStatus(IssueStatus::Waiting)),
 
             TicketStatus::Complete => $query
                 ->whereHas('ticketIssues')
